@@ -31,9 +31,16 @@
         <spring-ai.version>1.1.2</spring-ai.version>
     </properties>
     <dependencies>
+        <!-- Spring AI MCP Server with WebMVC (SSE transport) -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-mcp-server</artifactId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
+        <!-- Spring Boot JDBC for database access -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
 
         <dependency>
