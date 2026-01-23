@@ -39,6 +39,8 @@ java -version
 
 ### 运行
 
+**Linux / macOS：**
+
 ```bash
 # 使用环境变量配置数据库连接
 export DB_URL=jdbc:dm://localhost:5236/DAMENG
@@ -46,6 +48,26 @@ export DB_USERNAME=SYSDBA
 export DB_PASSWORD=yourpassword
 
 ./mvnw spring-boot:run
+```
+
+**Windows (CMD)：**
+
+```cmd
+set DB_URL=jdbc:dm://localhost:5236/DAMENG
+set DB_USERNAME=SYSDBA
+set DB_PASSWORD=yourpassword
+
+mvnw.cmd spring-boot:run
+```
+
+**Windows (PowerShell)：**
+
+```powershell
+$env:DB_URL="jdbc:dm://localhost:5236/DAMENG"
+$env:DB_USERNAME="SYSDBA"
+$env:DB_PASSWORD="yourpassword"
+
+.\mvnw.cmd spring-boot:run
 ```
 
 ### Docker 部署
