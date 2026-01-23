@@ -3,9 +3,14 @@ package com.uniin.ioc.dameng.service;
 import com.uniin.ioc.dameng.exception.QueryExecutionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +30,18 @@ public class DamengSchemaService {
      * @param schema schema name (optional, uses current schema if null)
      * @return list of table names
      */
+    @Retryable(
+            retryFor = {
+                    CannotGetJdbcConnectionException.class,
+                    DataAccessResourceFailureException.class,
+                    SQLException.class
+            },
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
     public List<String> listTables(String schema) {
+        log.debug("Attempting to list tables (with retry support)");
+
         try {
             String sql;
             List<String> tables;
@@ -55,7 +71,18 @@ public class DamengSchemaService {
      * @param schema    schema name (optional)
      * @return list of column information maps
      */
+    @Retryable(
+            retryFor = {
+                    CannotGetJdbcConnectionException.class,
+                    DataAccessResourceFailureException.class,
+                    SQLException.class
+            },
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
     public List<Map<String, Object>> describeTable(String tableName, String schema) {
+        log.debug("Attempting to describe table (with retry support)");
+
         try {
             String sql;
             List<Map<String, Object>> columns;
@@ -84,7 +111,18 @@ public class DamengSchemaService {
      *
      * @return list of schema names
      */
+    @Retryable(
+            retryFor = {
+                    CannotGetJdbcConnectionException.class,
+                    DataAccessResourceFailureException.class,
+                    SQLException.class
+            },
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
     public List<String> listSchemas() {
+        log.debug("Attempting to list schemas (with retry support)");
+
         try {
             String sql = "SELECT USERNAME FROM ALL_USERS ORDER BY USERNAME";
             List<String> schemas = jdbcTemplate.queryForList(sql, String.class);

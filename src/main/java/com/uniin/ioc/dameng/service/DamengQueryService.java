@@ -4,9 +4,14 @@ import com.uniin.ioc.dameng.exception.QueryExecutionException;
 import com.uniin.ioc.dameng.validator.SqlValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +35,18 @@ public class DamengQueryService {
      * @param schema schema name (optional, uses current schema if null)
      * @return list of row maps containing query results
      */
+    @Retryable(
+            retryFor = {
+                    CannotGetJdbcConnectionException.class,
+                    DataAccessResourceFailureException.class,
+                    SQLException.class
+            },
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
     public List<Map<String, Object>> executeQuery(String sql, String schema) {
+        log.debug("Attempting to execute query (with retry support)");
+
         // Validate SQL is read-only
         sqlValidator.validateReadOnly(sql);
 
