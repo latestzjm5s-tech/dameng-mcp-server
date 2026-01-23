@@ -62,6 +62,16 @@ docker run -p 8080:8080 \
   dameng-mcp-server
 ```
 
+### Claude Code 配置
+
+服务启动后，在 Claude Code 中添加 MCP 服务：
+
+```bash
+claude mcp add --transport sse dameng-db http://localhost:8080/sse
+```
+
+添加成功后，Claude Code 即可使用达梦数据库查询工具。
+
 ## 配置说明
 
 ### 数据库连接
