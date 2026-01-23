@@ -1,27 +1,15 @@
-# Multi-stage build for optimal image size
-FROM maven:3.9-amazoncorretto-17 AS build
-WORKDIR /workspace/app
-
-# Copy pom.xml first for dependency caching
-COPY pom.xml .
-
-# Download dependencies (cached layer)
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build
-COPY src src
-RUN mvn clean package -DskipTests -B
-
-# Runtime stage
+# Runtime-only image (build jar locally first: ./mvnw package -DskipTests)
 FROM amazoncorretto:17-alpine
 WORKDIR /app
 
 # Create non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
 
-# Copy built artifact from build stage
-COPY --from=build /workspace/app/target/dameng-*.jar app.jar
+# Copy pre-built jar from local target directory
+COPY target/dameng-*.jar app.jar
+
+RUN chown spring:spring app.jar
+USER spring:spring
 
 # Environment variables for database connection
 # Override these when running the container
@@ -34,9 +22,9 @@ ENV DB_URL=jdbc:dm://localhost:5236/DAMENG \
 # Expose MCP server port
 EXPOSE 8080
 
-# Health check using curl instead of wget
+# Health check via SSE endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+    CMD wget -q --spider http://localhost:8080/sse || exit 1
 
 # Run application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

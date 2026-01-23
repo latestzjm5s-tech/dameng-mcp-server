@@ -1,5 +1,6 @@
-# Build artifacts
-target/
+# Build artifacts (keep jar for runtime image)
+target/*
+!target/*.jar
 
 # IDE files
 .idea/
