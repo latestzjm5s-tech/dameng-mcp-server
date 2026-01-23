@@ -27,7 +27,13 @@
 
 ### 编译
 
+> **注意**：需要 Java 17+ 环境，请确保 `JAVA_HOME` 指向正确的 JDK 版本。
+
 ```bash
+# 检查 Java 版本
+java -version
+
+# 编译项目
 ./mvnw clean package -DskipTests
 ```
 
