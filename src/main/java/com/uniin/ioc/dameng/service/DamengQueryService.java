@@ -5,7 +5,6 @@ import com.uniin.ioc.dameng.validator.SqlValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -37,7 +36,6 @@ public class DamengQueryService {
      */
     @Retryable(
             retryFor = {
-                    CannotGetJdbcConnectionException.class,
                     DataAccessResourceFailureException.class,
                     SQLException.class
             },
@@ -70,7 +68,14 @@ public class DamengQueryService {
             log.info("Query returned {} rows", results.size());
             return results;
 
+        } catch (DataAccessResourceFailureException e) {
+            log.warn("Database connection failure, will retry: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
+            if (e.getCause() instanceof SQLException) {
+                log.warn("SQL connection error, will retry: {}", e.getMessage());
+                throw e;
+            }
             log.error("Query execution failed: {}", e.getMessage());
             throw new QueryExecutionException("Failed to execute query: " + e.getMessage(), e);
         }
