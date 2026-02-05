@@ -1,5 +1,6 @@
 package com.uniin.ioc.dameng.mcp;
 
+import com.uniin.ioc.dameng.service.DamengMutationService;
 import com.uniin.ioc.dameng.service.DamengQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * MCP Tools for Dameng database read-only operations
+ * MCP Tools for Dameng database operations
  */
 @Slf4j
 @Service
@@ -19,6 +20,7 @@ import java.util.Map;
 public class DamengMcpTools {
 
     private final DamengQueryService queryService;
+    private final DamengMutationService mutationService;
 
     @Tool(description = "Execute a read-only SQL SELECT query on Dameng database. " +
             "Returns query results as a list of row maps. Maximum 1000 rows returned. " +
@@ -33,5 +35,18 @@ public class DamengMcpTools {
             String schema) {
         log.info("MCP Tool executeQuery called with sql: {}, schema: {}", sql, schema);
         return queryService.executeQuery(sql, schema);
+    }
+
+    @Tool(description = "Execute a DML mutation (INSERT/UPDATE/DELETE) on Dameng database. " +
+            "Returns the number of affected rows. " +
+            "Only INSERT/UPDATE/DELETE statements are allowed; DDL operations (DROP/CREATE/ALTER/TRUNCATE/GRANT/REVOKE) are rejected.")
+    public String executeMutation(
+            @ToolParam(description = "SQL DML statement to execute. Examples: INSERT INTO users (name) VALUES ('John'), UPDATE users SET name = 'Jane' WHERE id = 1, DELETE FROM users WHERE id = 1")
+            String sql,
+            @ToolParam(description = "Schema name to use (optional). If not provided, uses the current/default schema.", required = false)
+            String schema) {
+        log.info("MCP Tool executeMutation called with sql: {}, schema: {}", sql, schema);
+        int affectedRows = mutationService.executeMutation(sql, schema);
+        return String.format("Mutation executed successfully. %d row(s) affected.", affectedRows);
     }
 }

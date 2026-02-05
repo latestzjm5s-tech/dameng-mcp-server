@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Spring Boot MCP (Model Context Protocol) Server application that provides **read-only** database operations for DM (达梦/Dameng) database. It exposes database query tools via SSE (Server-Sent Events) transport for AI clients.
+This is a Spring Boot MCP (Model Context Protocol) Server application that provides database operations for DM (达梦/Dameng) database. It exposes database query and mutation tools via SSE (Server-Sent Events) transport for AI clients.
 
 ## Build and Development Commands
 
@@ -57,11 +57,12 @@ com.uniin.ioc.dameng/
 │   └── DatabaseConfig.java         # JdbcTemplate configuration
 ├── service/
 │   ├── DamengQueryService.java     # SQL query execution
+│   ├── DamengMutationService.java  # SQL mutation execution
 │   └── DamengSchemaService.java    # Schema operations
 ├── mcp/
 │   └── DamengMcpTools.java         # MCP tool definitions
 ├── validator/
-│   └── SqlValidator.java           # Read-only SQL validation
+│   └── SqlValidator.java           # SQL validation (read-only & mutation)
 └── exception/
     ├── InvalidSqlException.java
     └── QueryExecutionException.java
@@ -72,6 +73,7 @@ com.uniin.ioc.dameng/
 | Tool | Description |
 |------|-------------|
 | `executeQuery` | Execute read-only SELECT query (max 1000 rows) |
+| `executeMutation` | Execute DML mutation (INSERT/UPDATE/DELETE) |
 | `listTables` | List tables in schema |
 | `describeTable` | Get table column structure |
 | `listSchemas` | List all database schemas |
@@ -85,8 +87,15 @@ Database connection via environment variables:
 
 ## Security
 
+### Query Tool (executeQuery)
 - Only SELECT queries allowed
 - INSERT/UPDATE/DELETE/DROP operations rejected
 - SQL comments blocked
 - Stored procedures blocked
 - Results limited to 1000 rows
+
+### Mutation Tool (executeMutation)
+- Only INSERT/UPDATE/DELETE allowed
+- DDL operations (DROP/CREATE/ALTER/TRUNCATE/GRANT/REVOKE) rejected
+- SQL comments blocked
+- Stored procedures blocked
