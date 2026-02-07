@@ -37,11 +37,11 @@ public class DamengMcpTools {
         return queryService.executeQuery(sql, schema);
     }
 
-    @Tool(description = "Execute a DML mutation (INSERT/UPDATE/DELETE) on Dameng database. " +
+    @Tool(description = "Execute a DML/DDL mutation on Dameng database. " +
             "Returns the number of affected rows. " +
-            "Only INSERT/UPDATE/DELETE statements are allowed; DDL operations (DROP/CREATE/ALTER/TRUNCATE/GRANT/REVOKE) are rejected.")
+            "Supports: INSERT/UPDATE/DELETE (DML) and CREATE/DROP/ALTER/TRUNCATE (DDL) statements.")
     public String executeMutation(
-            @ToolParam(description = "SQL DML statement to execute. Examples: INSERT INTO users (name) VALUES ('John'), UPDATE users SET name = 'Jane' WHERE id = 1, DELETE FROM users WHERE id = 1")
+            @ToolParam(description = "SQL DML/DDL statement to execute. Examples: INSERT INTO users (name) VALUES ('John'), UPDATE users SET name = 'Jane' WHERE id = 1, DELETE FROM users WHERE id = 1, CREATE TABLE test (id INT), DROP TABLE test")
             String sql,
             @ToolParam(description = "Schema name to use (optional). If not provided, uses the current/default schema.", required = false)
             String schema) {

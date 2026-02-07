@@ -73,7 +73,7 @@ com.uniin.ioc.dameng/
 | Tool | Description |
 |------|-------------|
 | `executeQuery` | Execute read-only SELECT query (max 1000 rows) |
-| `executeMutation` | Execute DML mutation (INSERT/UPDATE/DELETE) |
+| `executeMutation` | Execute DML/DDL mutation (INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE) |
 | `listTables` | List tables in schema |
 | `describeTable` | Get table column structure |
 | `listSchemas` | List all database schemas |
@@ -95,7 +95,7 @@ Database connection via environment variables:
 - Results limited to 1000 rows
 
 ### Mutation Tool (executeMutation)
-- Only INSERT/UPDATE/DELETE allowed
-- DDL operations (DROP/CREATE/ALTER/TRUNCATE/GRANT/REVOKE) rejected
+- DML operations: INSERT/UPDATE/DELETE allowed
+- DDL operations: CREATE/DROP/ALTER/TRUNCATE allowed
 - SQL comments blocked
 - Stored procedures blocked
