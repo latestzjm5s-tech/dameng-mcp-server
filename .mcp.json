@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dameng-db": {
+      "type": "sse",
+      "url": "http://localhost:8780/sse"
+    }
+  }
+}
