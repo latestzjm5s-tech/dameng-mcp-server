@@ -17,9 +17,9 @@ public class SqlValidator {
     private static final Pattern SELECT_PATTERN =
             Pattern.compile("^\\s*SELECT\\s+", Pattern.CASE_INSENSITIVE);
 
-    // Pattern to match DML/DDL statements (INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE)
+    // Pattern to match DML/DDL statements (INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE/COMMENT)
     private static final Pattern DML_DDL_PATTERN =
-            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE)\\s+", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE|COMMENT)\\s+", Pattern.CASE_INSENSITIVE);
 
     // Pattern to detect write operations (for read-only validation)
     private static final Pattern WRITE_OPERATIONS =
@@ -84,9 +84,9 @@ public class SqlValidator {
 
         String trimmedSql = sql.trim();
 
-        // Must start with INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, or TRUNCATE
+        // Must start with INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE, or COMMENT
         if (!DML_DDL_PATTERN.matcher(trimmedSql).find()) {
-            throw new InvalidSqlException("Only INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE statements are allowed");
+            throw new InvalidSqlException("Only INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE/COMMENT statements are allowed");
         }
 
         // Check for dangerous functions
