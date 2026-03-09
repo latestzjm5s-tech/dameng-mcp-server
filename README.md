@@ -5,17 +5,16 @@
 ## 功能特性
 
 - 通过 SSE (Server-Sent Events) 协议暴露 MCP 工具
-- 支持只读查询（SELECT）和写入操作（INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE）
+- 支持执行任意 SQL 语句（查询、DML、DDL、存储过程调用等）
 - SSE 心跳保活机制，防止长时间空闲连接断开
-- 查询结果限制 1000 行，防止内存溢出
 - **支持 ARM64 Mac (Apple Silicon) Docker 环境运行**
 
 ## MCP 工具
 
 | 工具名 | 描述 |
 |--------|------|
-| `executeQuery` | 执行只读 SELECT 查询（最多返回 1000 行） |
-| `executeMutation` | 执行 DML/DDL 操作（INSERT/UPDATE/DELETE/CREATE/DROP/ALTER/TRUNCATE） |
+| `executeQuery` | 执行任意 SQL，返回结构化结果（结果集/影响行数） |
+| `executeMutation` | 与 `executeQuery` 等价，保留用于兼容旧客户端 |
 
 ## 环境要求
 
@@ -119,20 +118,11 @@ claude mcp add --transport sse dameng-db http://localhost:8080/sse
 
 ## 安全机制
 
-### 查询工具 (executeQuery)
+### SQL 执行工具
 
-- 仅允许 SELECT 查询
-- 禁止 INSERT/UPDATE/DELETE/DROP 操作
-- 禁止 SQL 注释
-- 禁止存储过程调用
-- 查询结果限制 1000 行
-
-### 写入工具 (executeMutation)
-
-- 支持 DML 操作：INSERT/UPDATE/DELETE
-- 支持 DDL 操作：CREATE/DROP/ALTER/TRUNCATE
-- 禁止 SQL 注释
-- 禁止存储过程调用
+- 允许执行任意 SQL 语句
+- 返回结构化执行结果，可能包含一个或多个结果集或更新计数
+- 仅保留空 SQL 拦截，其他语句类型不做限制
 
 ## 项目结构
 
@@ -142,12 +132,12 @@ com.uniin.ioc.dameng/
 ├── config/
 │   └── DatabaseConfig.java         # DataSource 和 JdbcTemplate 配置
 ├── service/
-│   ├── DamengQueryService.java     # SQL 查询执行
-│   └── DamengMutationService.java  # SQL 写入执行
+│   ├── DamengQueryService.java     # 通用 SQL 执行
+│   └── DamengMutationService.java  # 兼容旧工具名的 SQL 执行入口
 ├── mcp/
 │   └── DamengMcpTools.java         # MCP 工具定义
 ├── validator/
-│   └── SqlValidator.java           # SQL 校验（读/写）
+│   └── SqlValidator.java           # SQL 基础校验（仅校验非空）
 └── exception/
     ├── InvalidSqlException.java
     └── QueryExecutionException.java

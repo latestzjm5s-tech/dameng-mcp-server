@@ -9,6 +9,10 @@ RUN addgroup -S spring && adduser -S spring -G spring
 COPY target/dameng-*.jar app.jar
 
 RUN chown spring:spring app.jar
+
+# Install curl for health check (must run as root before switching user)
+RUN apk add --no-cache curl
+
 USER spring:spring
 
 # Environment variables for database connection
@@ -21,9 +25,6 @@ ENV DB_URL=jdbc:dm://localhost:5236/DAMENG \
 
 # Expose MCP server port
 EXPOSE 8080
-
-# Health check via MCP endpoint (requires Accept header for SSE)
-RUN apk add --no-cache curl
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -f -H "Accept: text/event-stream" http://localhost:8080/mcp 2>/dev/null | head -c 1 | grep -q . || exit 1
 

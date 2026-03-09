@@ -1,34 +1,32 @@
 package com.uniin.ioc.dameng.service;
 
 import com.uniin.ioc.dameng.exception.QueryExecutionException;
-import com.uniin.ioc.dameng.validator.SqlValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
+import java.util.Map;
 
 /**
- * Service for executing DML mutations (INSERT/UPDATE/DELETE) on Dameng database
+ * Compatibility service for executing arbitrary SQL through the mutation tool.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DamengMutationService {
 
-    private final JdbcTemplate jdbcTemplate;
-    private final SqlValidator sqlValidator;
+    private final DamengQueryService queryService;
 
     /**
-     * Execute a DML mutation (INSERT/UPDATE/DELETE)
+     * Execute an arbitrary SQL statement.
      *
-     * @param sql    SQL DML statement to execute
+     * @param sql    SQL statement to execute
      * @param schema schema name (optional, uses current schema if null)
-     * @return number of affected rows
+     * @return execution result containing result sets and update counts
      */
     @Retryable(
             retryFor = {
@@ -38,26 +36,10 @@ public class DamengMutationService {
             maxAttempts = 3,
             backoff = @Backoff(delay = 2000, multiplier = 2)
     )
-    public int executeMutation(String sql, String schema) {
-        log.debug("Attempting to execute mutation (with retry support)");
-
-        // Validate SQL is a valid DML statement
-        sqlValidator.validateMutation(sql);
-
+    public Map<String, Object> executeMutation(String sql, String schema) {
+        log.debug("Attempting to execute SQL through mutation service");
         try {
-            // Set schema if provided
-            if (schema != null && !schema.isBlank()) {
-                jdbcTemplate.execute("SET SCHEMA " + schema.toUpperCase());
-                log.info("Set schema to: {}", schema.toUpperCase());
-            }
-
-            // Execute mutation
-            log.info("Executing mutation: {}", sql);
-            int affectedRows = jdbcTemplate.update(sql);
-
-            log.info("Mutation completed, {} rows affected", affectedRows);
-            return affectedRows;
-
+            return queryService.executeQuery(sql, schema);
         } catch (DataAccessResourceFailureException e) {
             log.warn("Database connection failure, will retry: {}", e.getMessage());
             throw e;
@@ -67,7 +49,7 @@ public class DamengMutationService {
                 throw e;
             }
             log.error("Mutation execution failed: {}", e.getMessage());
-            throw new QueryExecutionException("Failed to execute mutation: " + e.getMessage(), e);
+            throw new QueryExecutionException("Failed to execute mutation SQL: " + e.getMessage(), e);
         }
     }
 }
