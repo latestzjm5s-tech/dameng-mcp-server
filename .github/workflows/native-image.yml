@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - feat/cli-stdio
   workflow_dispatch:
 
 jobs:
