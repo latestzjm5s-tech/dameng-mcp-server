@@ -3,6 +3,7 @@ package com.uniin.ioc.dameng;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import java.io.*;
 import java.sql.*;
 import java.util.*;
 
@@ -17,17 +18,36 @@ public class Main {
         }
 
         String schema = null;
-        String sql;
-        if ("--schema".equals(args[0]) && args.length >= 3) {
-            schema = args[1];
-            sql = join(args, 2);
-        } else {
-            sql = join(args, 0);
+        boolean danger = false;
+        int argIdx = 0;
+
+        while (argIdx < args.length) {
+            if ("--schema".equals(args[argIdx]) && argIdx + 1 < args.length) {
+                schema = args[++argIdx];
+                argIdx++;
+            } else if ("--danger".equals(args[argIdx])) {
+                danger = true;
+                argIdx++;
+            } else {
+                break;
+            }
         }
 
-        String url = env("DB_URL", "jdbc:dm://localhost:5236/DAMENG");
-        String user = env("DB_USERNAME", "SYSDBA");
-        String pass = env("DB_PASSWORD", "SYSDBA");
+        String sql = join(args, argIdx);
+        if (sql.trim().isEmpty()) {
+            printUsage();
+            System.exit(0);
+        }
+
+        if (!danger && !isSelect(sql)) {
+            System.out.println(errorJson(sql, new Exception("Only SELECT is allowed. Use --danger to execute non-SELECT statements.")));
+            System.exit(1);
+        }
+
+        Properties conf = loadConf();
+        String url = resolve("DB_URL", "url", conf, "jdbc:dm://localhost:5236/DAMENG");
+        String user = resolve("DB_USERNAME", "username", conf, "SYSDBA");
+        String pass = resolve("DB_PASSWORD", "password", conf, "SYSDBA");
 
         if (!url.contains("socketTimeout")) {
             url += (url.contains("?") ? "&" : "?") + "socketTimeout=10000&connectTimeout=5000";
@@ -116,6 +136,44 @@ public class Main {
         }
     }
 
+    private static boolean isSelect(String sql) {
+        String trimmed = sql.trim().toUpperCase();
+        return trimmed.startsWith("SELECT") || trimmed.startsWith("WITH") || trimmed.startsWith("SHOW") || trimmed.startsWith("DESC") || trimmed.startsWith("EXPLAIN");
+    }
+
+    /**
+     * Load dameng-cli.conf from the same directory as the JAR file.
+     */
+    private static Properties loadConf() {
+        Properties props = new Properties();
+        try {
+            String jarPath = Main.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+            File jarDir = new File(jarPath).getParentFile();
+            File confFile = new File(jarDir, "dameng-cli.conf");
+            if (confFile.exists()) {
+                FileInputStream fis = new FileInputStream(confFile);
+                try {
+                    props.load(fis);
+                } finally {
+                    fis.close();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return props;
+    }
+
+    /**
+     * Resolve config value: env var > conf file > default.
+     */
+    private static String resolve(String envKey, String confKey, Properties conf, String defaultValue) {
+        String envVal = System.getenv(envKey);
+        if (envVal != null && !envVal.trim().isEmpty()) return envVal;
+        String confVal = conf.getProperty(confKey);
+        if (confVal != null && !confVal.trim().isEmpty()) return confVal;
+        return defaultValue;
+    }
+
     private static String env(String key, String defaultValue) {
         String val = System.getenv(key);
         return (val != null && !val.trim().isEmpty()) ? val : defaultValue;
@@ -128,12 +186,17 @@ public class Main {
     }
 
     private static void printUsage() {
-        System.err.println("Usage: java -jar dameng-cli.jar [--schema SCHEMA] SQL");
+        System.err.println("Usage: java -jar dameng-cli.jar [--schema SCHEMA] [--danger] SQL");
         System.err.println();
-        System.err.println("Examples:");
-        System.err.println("  java -jar dameng-cli.jar \"SELECT * FROM SYSDBA.MY_TABLE\"");
-        System.err.println("  java -jar dameng-cli.jar --schema MYSCHEMA \"SELECT 1\"");
+        System.err.println("Options:");
+        System.err.println("  --schema SCHEMA  Set schema before executing SQL");
+        System.err.println("  --danger         Allow non-SELECT statements (INSERT/UPDATE/DELETE/DDL)");
         System.err.println();
-        System.err.println("Env: DB_URL, DB_USERNAME, DB_PASSWORD");
+        System.err.println("Config: place dameng-cli.conf next to the JAR file:");
+        System.err.println("  url=jdbc:dm://localhost:5236/DAMENG");
+        System.err.println("  username=SYSDBA");
+        System.err.println("  password=SYSDBA");
+        System.err.println();
+        System.err.println("Env vars (override conf): DB_URL, DB_USERNAME, DB_PASSWORD");
     }
 }
