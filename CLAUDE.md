@@ -1,99 +1,45 @@
-# CLAUDE.md
+# Dameng CLI
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+达梦数据库命令行查询工具。纯 Java，无框架，3.5MB。给 Claude Code / Codex 搭配 skill 用。
 
-## Project Overview
-
-Spring Boot MCP (Model Context Protocol) Server for DM (达梦/Dameng) database. Exposes unrestricted SQL execution tools via SSE transport for AI clients.
-
-## Build and Development Commands
-
-**Requires Java 17+** (use SDKMAN to switch: `source ~/.sdkman/bin/sdkman-init.sh && sdk use java 17.0.17-amzn`)
+## Build
 
 ```bash
-# Build (skip tests)
-./mvnw clean package -DskipTests
-
-# Build with proxy
-export https_proxy=http://127.0.0.1:7897 http_proxy=http://127.0.0.1:7897 all_proxy=socks5://127.0.0.1:7897 && \
-./mvnw clean package -DskipTests
-
-# Run
-./mvnw spring-boot:run
-
-# Test
-./mvnw test
+mvn clean package
 ```
 
-## Docker
+产物: `target/dameng-cli-1.0.0.jar` (3.5MB)
+
+## Usage
 
 ```bash
-# Build (with proxy for ARM64 Mac)
-docker build \
-  --build-arg http_proxy=http://host.docker.internal:7897 \
-  --build-arg https_proxy=http://host.docker.internal:7897 \
-  -t dameng-mcp-server .
-
-# Run
-docker run -d -p 8080:8080 \
-  -e DB_URL=jdbc:dm://host.docker.internal:5236/DAMENG \
-  -e DB_USERNAME=SYSDBA \
-  -e DB_PASSWORD=yourpassword \
-  --name dameng-mcp \
-  dameng-mcp-server
+java -jar dameng-cli.jar "SELECT * FROM SYSDBA.MY_TABLE"
+java -jar dameng-cli.jar --schema MYSCHEMA "SELECT 1"
+java -jar dameng-cli.jar --danger "DELETE FROM my_table WHERE id=1"
 ```
 
-## Architecture
+## Config
 
-- **Framework**: Spring Boot 3.5.x + Spring AI MCP Server (WebMVC/SSE)
-- **Database**: DM (达梦) via DmJdbcDriver18, no connection pool (DriverManagerDataSource)
-- **Java Version**: 17
-- **Transport**: SSE (HTTP) on port 8080
-- **Retry**: Spring Retry on connection failures (3 attempts, exponential backoff)
+配置文件 `dameng-cli.conf`（放在 JAR/二进制同目录）：
 
-### Package Structure
-
-```
-com.uniin.ioc.dameng/
-├── DamengApplication.java          # Main entry point
-├── config/
-│   └── DatabaseConfig.java         # DataSource & JdbcTemplate configuration
-├── service/
-│   ├── DamengQueryService.java     # Core SQL execution (uses ConnectionCallback)
-│   └── DamengMutationService.java  # Delegates to QueryService for compatibility
-├── mcp/
-│   └── DamengMcpTools.java         # MCP tool definitions (2 tools)
-├── validator/
-│   └── SqlValidator.java           # SQL validation (non-empty check only)
-└── exception/
-    ├── InvalidSqlException.java
-    └── QueryExecutionException.java
+```properties
+url=jdbc:dm://localhost:5236/DAMENG
+username=SYSDBA
+password=SYSDBA
 ```
 
-### MCP Tools
+优先级：环境变量 > 配置文件 > 默认值
 
-| Tool | Description |
-|------|-------------|
-| `executeQuery` | Execute any SQL statement, return structured results (result sets + update counts) |
-| `executeMutation` | Compatibility alias, delegates to `executeQuery` internally |
+| 环境变量 | 配置文件键 | 默认值 |
+|---|---|---|
+| `DB_URL` | `url` | `jdbc:dm://localhost:5236/DAMENG` |
+| `DB_USERNAME` | `username` | `SYSDBA` |
+| `DB_PASSWORD` | `password` | `SYSDBA` |
 
-Both tools accept `sql` (required) and `schema` (optional) parameters.
+## Release
 
-### Configuration
+打 tag 自动构建三平台 native image：
 
-Database connection via environment variables:
-- `DB_URL` — JDBC URL (default: `jdbc:dm://localhost:5236/DAMENG`)
-- `DB_USERNAME` — Username (default: `SYSDBA`)
-- `DB_PASSWORD` — Password (default: `SYSDBA`)
-
-Connection timeouts are auto-appended: `connectTimeout=5000&socketTimeout=10000`
-
-## Known Pitfalls
-
-- **JdbcTemplate.execute() ambiguity**: When using a lambda with `jdbcTemplate.execute()`, must explicitly cast to `ConnectionCallback<T>` to avoid compile error between `ConnectionCallback` and `StatementCallback` overloads.
-- **No connection pool**: Uses DriverManagerDataSource (new connection per request) to avoid HikariCP timeout issues with DM database.
-
-## Security
-
-- Any non-empty SQL statement is allowed — no statement type restrictions
-- Results may include result sets, update counts, or both
+```bash
+git tag v1.x.x && git push origin v1.x.x
+```

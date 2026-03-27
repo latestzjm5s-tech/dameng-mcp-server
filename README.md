@@ -1,147 +1,93 @@
-# 达梦数据库 MCP Server
+# Dameng CLI
 
-基于 Spring Boot 的 MCP (Model Context Protocol) 服务器，为 AI 客户端提供达梦数据库的查询和写入能力。
+达梦数据库命令行查询工具。纯 Java，单文件 3.5MB，输出 JSON。
 
-## 功能特性
+也提供 GraalVM Native Image 构建的原生二进制，无需安装 Java。
 
-- 通过 SSE (Server-Sent Events) 协议暴露 MCP 工具
-- 支持执行任意 SQL 语句（查询、DML、DDL、存储过程调用等）
-- SSE 心跳保活机制，防止长时间空闲连接断开
-- **支持 ARM64 Mac (Apple Silicon) Docker 环境运行**
+## 下载
 
-## MCP 工具
+从 [Releases](https://github.com/latestzjm5s-tech/dameng-mcp-server/releases) 下载对应平台的文件：
 
-| 工具名 | 描述 |
-|--------|------|
-| `executeQuery` | 执行任意 SQL，返回结构化结果（结果集/影响行数） |
-| `executeMutation` | 与 `executeQuery` 等价，保留用于兼容旧客户端 |
+| 文件 | 平台 |
+|------|------|
+| `dameng-cli-linux-x64` | Linux x64 |
+| `dameng-cli-macos-arm64` | macOS Apple Silicon |
+| `dameng-cli-windows-x64.exe` | Windows x64 |
 
-## 环境要求
+## 配置
 
-- Java 17+
-- 达梦数据库
+在可执行文件同目录下创建 `dameng-cli.conf`：
 
-## 快速开始
+```properties
+url=jdbc:dm://192.168.1.100:5236/DAMENG
+username=SYSDBA
+password=你的密码
+```
 
-### 编译
+也可通过环境变量配置（优先级高于配置文件）：
 
-> **注意**：需要 Java 17+ 环境，请确保 `JAVA_HOME` 指向正确的 JDK 版本。
+| 环境变量 | 配置文件键 | 默认值 |
+|----------|-----------|--------|
+| `DB_URL` | `url` | `jdbc:dm://localhost:5236/DAMENG` |
+| `DB_USERNAME` | `username` | `SYSDBA` |
+| `DB_PASSWORD` | `password` | `SYSDBA` |
+
+## 使用
 
 ```bash
-# 检查 Java 版本
-java -version
+# 查询（默认只允许 SELECT/WITH/SHOW/DESC/EXPLAIN）
+./dameng-cli "SELECT * FROM my_table LIMIT 10"
 
-# 编译项目
-./mvnw clean package -DskipTests
+# 指定 schema
+./dameng-cli --schema MY_SCHEMA "SELECT * FROM my_table"
+
+# 执行写操作，需加 --danger
+./dameng-cli --danger "INSERT INTO my_table(name) VALUES('test')"
 ```
 
-### 运行
-
-**Linux / macOS：**
+JAR 方式运行（需要 Java 8+）：
 
 ```bash
-# 使用环境变量配置数据库连接
-export DB_URL=jdbc:dm://localhost:5236/DAMENG
-export DB_USERNAME=SYSDBA
-export DB_PASSWORD=yourpassword
-
-./mvnw spring-boot:run
+java -jar dameng-cli.jar "SELECT 1"
 ```
 
-**Windows (CMD)：**
+## 输出格式
 
-```cmd
-set DB_URL=jdbc:dm://localhost:5236/DAMENG
-set DB_USERNAME=SYSDBA
-set DB_PASSWORD=yourpassword
+所有输出为 JSON，写入 stdout。成功 exit code = 0，失败 exit code = 1。
 
-mvnw.cmd spring-boot:run
+```json
+{
+  "sql": "SELECT 1 AS num",
+  "resultCount": 1,
+  "results": [{
+    "index": 0,
+    "type": "resultSet",
+    "rowCount": 1,
+    "rows": [{"num": 1}]
+  }]
+}
 ```
 
-**Windows (PowerShell)：**
+错误时：
 
-```powershell
-$env:DB_URL="jdbc:dm://localhost:5236/DAMENG"
-$env:DB_USERNAME="SYSDBA"
-$env:DB_PASSWORD="yourpassword"
-
-.\mvnw.cmd spring-boot:run
+```json
+{
+  "sql": "...",
+  "error": "错误信息"
+}
 ```
 
-### Docker 部署
-
-> **亮点**：基于 `amazoncorretto:17-alpine` 镜像，原生支持 ARM64 架构，可在 Apple Silicon Mac (M1/M2/M3/M4) 上流畅运行。
+## 从源码构建
 
 ```bash
-# 构建镜像
-docker build -t dameng-mcp-server .
+# 构建 JAR（需要 Java 8+ 和 Maven）
+mvn clean package
 
-# 运行容器
-docker run -d -p 8080:8080 \
-  -e DB_URL=jdbc:dm://host:5236/DAMENG \
-  -e DB_USERNAME=SYSDBA \
-  -e DB_PASSWORD=yourpassword \
-  --name dameng-mcp \
-  dameng-mcp-server
+# 产物
+target/dameng-cli-1.0.0.jar
 ```
 
-### Claude Code 配置
-
-服务启动后，在 Claude Code 中添加 MCP 服务：
-
-```bash
-claude mcp add --transport sse dameng-db http://localhost:8080/sse
-```
-
-添加成功后，Claude Code 即可使用达梦数据库查询工具。
-
-## 配置说明
-
-### 数据库连接
-
-| 环境变量 | 默认值 | 说明 |
-|----------|--------|------|
-| `DB_URL` | `jdbc:dm://localhost:5236/DAMENG` | JDBC 连接地址 |
-| `DB_USERNAME` | `SYSDBA` | 数据库用户名 |
-| `DB_PASSWORD` | `SYSDBA` | 数据库密码 |
-
-### 连接策略
-
-- 每次请求创建新连接（无连接池）
-- 自动添加连接超时参数：`connectTimeout=5000&socketTimeout=10000`
-- 查询超时：10 秒
-
-### SSE 保活机制
-
-- `keep-alive-interval`: 30 秒（MCP Server 定期发送心跳）
-- `tomcat.keep-alive-timeout`: 5 分钟
-
-## 安全机制
-
-### SQL 执行工具
-
-- 允许执行任意 SQL 语句
-- 返回结构化执行结果，可能包含一个或多个结果集或更新计数
-- 仅保留空 SQL 拦截，其他语句类型不做限制
-
-## 项目结构
-
-```
-com.uniin.ioc.dameng/
-├── DamengApplication.java          # 主入口
-├── config/
-│   └── DatabaseConfig.java         # DataSource 和 JdbcTemplate 配置
-├── service/
-│   ├── DamengQueryService.java     # 通用 SQL 执行
-│   └── DamengMutationService.java  # 兼容旧工具名的 SQL 执行入口
-├── mcp/
-│   └── DamengMcpTools.java         # MCP 工具定义
-├── validator/
-│   └── SqlValidator.java           # SQL 基础校验（仅校验非空）
-└── exception/
-    ├── InvalidSqlException.java
-    └── QueryExecutionException.java
-```
+GitHub Actions 会在打 tag 时自动构建三平台 native image 并发布 Release。
 
 ## 许可证
 
